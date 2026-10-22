@@ -1,0 +1,48 @@
+name: Polaris SAST + SCA
+
+# Full scan on push to main; PR scan (new issues only) on pull requests into main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  polaris:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: 25
+          distribution: temurin
+          cache: maven
+
+      - name: Polaris scan
+        uses: blackduck-inc/black-duck-security-scan@v2
+        with:
+          polaris_server_url: ${{ vars.POLARIS_SERVER_URL }}
+          polaris_access_token: ${{ secrets.POLARIS_ACCESS_TOKEN }}
+          polaris_assessment_types: "SCA,SAST"
+          polaris_application_name: Acme
+          polaris_project_name: WebGoat
+          # PR comments cover only issues new in the PR branch.
+          polaris_prComment_enabled: true
+          # Left off on purpose: WebGoat has hundreds of issues, so these would
+          # create a flood of GitHub issues / Fix PRs. Enable one at a time.
+          polaris_externalIssues_create: false
+          polaris_fixpr_enabled: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          polaris_reports_sarif_create: true
+          polaris_upload_sarif_report: true
+          coverity_build_command: ./mvnw -B -DskipTests package
+          coverity_clean_command: ./mvnw -B clean
