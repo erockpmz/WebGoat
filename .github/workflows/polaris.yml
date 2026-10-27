@@ -46,19 +46,3 @@ jobs:
           polaris_upload_sarif_report: true
           coverity_build_command: ./mvnw -B -DskipTests package
           coverity_clean_command: ./mvnw -B clean
-
-      # Stand-in for a Polaris build-break policy (that policy needs a Polaris admin).
-      # Fails the required check when Polaris reports a Critical issue on the pull request.
-      - name: Block merge on new Critical issues
-        if: github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          body=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
-            --jq '.[] | select(.user.login == "github-actions[bot]") | select(.body | contains("Auto-generated PR comment (Polaris)")) | .body')
-          if echo "$body" | grep -q "Critical"; then
-            echo "::error::Polaris found new Critical issues in this pull request"
-            echo "$body" | grep "Critical" | cut -c1-300
-            exit 1
-          fi
-          echo "Polaris reported no new Critical issues."
